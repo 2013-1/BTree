@@ -15,7 +15,6 @@ import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import primitive.Animation;
-import sun.swing.SwingAccessor;
 
 /**
  * Classe para representar visualmente um node.
