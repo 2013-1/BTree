@@ -82,8 +82,6 @@ public class Animation extends Thread {
       }
       mutex.release();
 
-      Border originalBorder = object.getBorder();
-      object.setBorder(BorderFactory.createLineBorder(Color.red, 2));
       sleep(500);
 
       //Vai aumentando a distancia e descobrindo seus pontos x e y.
@@ -100,14 +98,7 @@ public class Animation extends Thread {
       int oppositiveCateto = (int) (sine * hypotenuse) + startPoint.y;
       object.setLocation(adjacentCateto, oppositiveCateto);
 
-      sleep(500);
-      if (object instanceof VisualNode) {
-        object.setBorder(BorderFactory.createLineBorder(new Color(150, 152, 154),2,true));
-      }
-      else {
-        object.setBorder(originalBorder);
-      }
-
+      
       if (self) {
         aniMutex.release();
         anitag = false;

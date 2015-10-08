@@ -5,10 +5,13 @@
  */
 package view;
 
+import java.awt.BasicStroke;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.RenderingHints;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JPanel;
@@ -28,6 +31,7 @@ public class VisualTree extends JPanel {
    * @param root
    */
   public VisualTree(Node root) {
+    lightBlue = new Color(102, 102, 255);
     this.root = root;
     createNode(root);
     reloaderScreen();
@@ -63,8 +67,6 @@ public class VisualTree extends JPanel {
     remove(view);
   }
 
-
-
   public void reorganize(Node root) {
     placeTree(root);
     centralizeNodes(root);
@@ -75,8 +77,8 @@ public class VisualTree extends JPanel {
     size.width = width + 20;
     setPreferredSize(size);
     repaint();
-  } 
-  
+  }
+
   private int getWidth(Node node) {
     int width = node.isLeaf() ? node.getView().getWidth() : -10;
     for (int x = 0; x < node.connections(); x++) {
@@ -128,18 +130,33 @@ public class VisualTree extends JPanel {
   }
 
   @Override
-  public void paintComponent(Graphics graphic) {
-    super.paintComponent(graphic);
-    drawLines(root, (Graphics2D) graphic.create());
+  public void paintComponent(Graphics gph) {
+    super.paintComponent(gph);
+    Graphics2D graphics = (Graphics2D) gph.create();
+    graphics.setRenderingHint(
+            RenderingHints.KEY_ANTIALIASING,
+            RenderingHints.VALUE_ANTIALIAS_ON);
+    graphics.setStroke(new BasicStroke(1));
+    graphics.setPaint(lightBlue);
+
+    drawLines(root, graphics);
   }
+  private final Color lightBlue;
 
   private void drawLines(Node node, Graphics2D graphic) {
     for (int x = 0; x < node.connections(); x++) {
       Node child = node.getNode(x);
+      VisualNode childview = child.getView();
       Point start = node.getView().getConnectionPoint(x);
-      Point end = child.getView().getParentConnectionPoint();
+
+      Point end = childview.getParentConnectionPoint();
+      if (childview.getBackground().getRGB() == lightBlue.getRGB()) {
+        graphic.setStroke(new BasicStroke(2));
+      }
       graphic.drawLine(start.x, start.y, end.x, end.y);
+      graphic.setStroke(new BasicStroke(1));
       drawLines(child, graphic);
+
     }
   }
 

@@ -6,12 +6,16 @@
 package view;
 
 import java.awt.Color;
-import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.Polygon;
+import java.awt.RenderingHints;
+import java.awt.geom.Area;
+import java.awt.geom.RoundRectangle2D;
 import static java.lang.Thread.sleep;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import primitive.Animation;
@@ -23,11 +27,9 @@ import primitive.Animation;
  */
 public class VisualNode extends JLabel {
 
-  private JLabel[] nodes, contents;
+  private VisualBlock[] contents;
   private final int lenght;
-  private final Dimension square = new Dimension(20, 20);
-  private final Color gray = new Color(150, 152, 154);
-  private final int thickness = 2;
+  private boolean[] connection;
 
   /**
    *
@@ -35,6 +37,7 @@ public class VisualNode extends JLabel {
    */
   public VisualNode(int size) {
     this.lenght = size;
+    this.connection = new boolean[size + 1];
     initComponents();
   }
 
@@ -43,14 +46,8 @@ public class VisualNode extends JLabel {
    * @param value
    * @param index
    */
-  public void add(String value, int index) {
-    contents[index] = new JLabel(value);
-    final JLabel content = contents[index];
-    Point location = new Point(nodes[index].getX() + nodes[index].getWidth(), thickness);
-    content.setSize(square);
-    content.setLocation(location);
-    content.setHorizontalAlignment(JLabel.CENTER);
-    content.setOpaque(true);
+  public void add(String value, final int index) {
+    contents[index].setText(value);
 
     //animação
     new Thread() {
@@ -59,13 +56,12 @@ public class VisualNode extends JLabel {
       public void run() {
         try {
           Animation.aniMutex.acquire();
-          content.setBorder(BorderFactory.createLineBorder(Color.red, thickness));
-          add(content, 0);
+          add(contents[index], 0);
           sleep(1000);
-          content.setBorder(null);
+          contents[index].setBorder(null);
         }
         catch (InterruptedException ex) {
-          Logger.getLogger(VisualNode.class.getName()).log(Level.SEVERE, null, ex);
+
         }
         Animation.aniMutex.release();
       }
@@ -80,10 +76,10 @@ public class VisualNode extends JLabel {
       @Override
       public void run() {
         try {
-          object.setBorder(BorderFactory.createLineBorder(Color.blue, thickness));
+          setBackground(new Color(102, 102, 255));
           Animation.aniMutex.acquire();
           sleep(time);
-          setBorder(BorderFactory.createLineBorder(gray, thickness, true));
+          setBackground(new Color(194, 194, 194));
         }
         catch (InterruptedException ex) {
           Logger.getLogger(VisualNode.class.getName()).log(Level.SEVERE, null, ex);
@@ -99,7 +95,6 @@ public class VisualNode extends JLabel {
    */
   public void removeItem(int index) {
     final JLabel garbage = contents[index];
-    contents[index] = null;
 
     //animação
     new Thread() {
@@ -110,7 +105,7 @@ public class VisualNode extends JLabel {
           garbage.setBackground(Color.red);
           garbage.setForeground(Color.white);
           sleep(1000);
-          remove(garbage);
+          garbage.setText("");
           repaint();
           Animation.aniMutex.release();
         }
@@ -129,12 +124,14 @@ public class VisualNode extends JLabel {
    * @param index
    */
   public void moveLeft(int index) {
-    int x = nodes[index - 1].getX() + nodes[index].getWidth();
-    Point location = new Point(x, thickness);
+    int x = contents[index].getX() - contents[index].getWidth();
+    Point location = new Point(x, 0);
     Animation.moveObject(contents[index], location);
 
     contents[index - 1] = contents[index];
-    contents[index] = null;
+    contents[index] = new VisualBlock();
+    contents[index].setLocation(index * contents[index].getWidth() + 3, 0);
+    add(contents[index]);
   }
 
   /**
@@ -142,63 +139,104 @@ public class VisualNode extends JLabel {
    * @param index
    */
   public void moveRight(int index) {
-    int x = nodes[index + 1].getX() + nodes[index].getWidth();
-    Point location = new Point(x, thickness);
+    int x = contents[index].getX() + contents[index].getWidth();
+    Point location = new Point(x, 0);
     Animation.moveObject(contents[index], location);
 
     contents[index + 1] = contents[index];
-    contents[index] = null;
+    contents[index] = new VisualBlock();
+    contents[index].setLocation(index * contents[index].getWidth() + 3, 0);
+    add(contents[index]);
   }
 
   public void connect(int index) {
-    nodes[index].setBackground(Color.blue);
-    nodes[index].setBorder(BorderFactory.createLineBorder(Color.blue));
+    connection[index] = true;
     repaint();
   }
 
   public void disconnect(int index) {
-    nodes[index].setBackground(gray);
-    nodes[index].setBorder(BorderFactory.createEmptyBorder());
+    connection[index] = false;
     repaint();
   }
 
   public Point getConnectionPoint(int index) {
-    JLabel visual = nodes[index];
     Point location = getLocation();
-    location.x += visual.getX();
-    location.x += visual.getWidth() / 2;
-    location.y += visual.getHeight() + thickness + 1;
+    try {
+      location.x = contents[index].getX() + getX();
+    }
+    catch (ArrayIndexOutOfBoundsException e) {
+      location.x = contents[index - 1].getX() + contents[index - 1].getWidth() + getX();
+    }
+    location.y = contents[0].getHeight() + getY();
     return location;
   }
 
   public Point getParentConnectionPoint() {
     Point location = getLocation();
-    location.x += getWidth() / 2;
+    location.x += (getWidth() - 5) / 2;
     return location;
   }
 
   private void initComponents() {
-    this.nodes = new JLabel[lenght + 1];
-    this.contents = new JLabel[lenght];
+    this.contents = new VisualBlock[lenght];
+    setLayout(null);
 
-    Dimension nodeSize = new Dimension(square.width / 3, square.height);
-    int width = nodes.length * nodeSize.width + contents.length * square.width;
-    setSize(width + thickness * 2, square.height + thickness * 2);
-
-    setOpaque(true);
-    setBorder(BorderFactory.createLineBorder(gray, thickness, true));
-    setVisible(false);
-
-    int gap = square.width + nodeSize.width;
-    for (int i = 0; i < nodes.length; i++) {
-      nodes[i] = new JLabel();
-      JLabel node = nodes[i];
-      node.setSize(nodeSize);
-      node.setLocation(gap * i + thickness, thickness);
-      node.setBackground(gray);
-      node.setOpaque(true);
-      add(node);
+    for (int i = 0; i < contents.length; i++) {
+      contents[i] = new VisualBlock();
+      VisualBlock block = contents[i];
+      block.setLocation(i * block.getWidth() + 3, 0);
+      add(block);
     }
+    setSize(contents.length * contents[0].getWidth() + 11, contents[0].getHeight() + 5);
+    setBackground(new Color(194, 194, 194));
+
+  }
+
+  @Override
+  public void paintComponent(Graphics g) {
+    super.paintComponent(g);
+    Graphics2D graphics = (Graphics2D) g.create();
+    graphics.setRenderingHint(
+            RenderingHints.KEY_ANTIALIASING,
+            RenderingHints.VALUE_ANTIALIAS_ON);
+    graphics.setPaint(getBackground());
+
+    RoundRectangle2D rec = new RoundRectangle2D.Float(0, 0, getWidth() - 5, getHeight() - 5, 10, 10);
+    Shadow.drawShadow(rec, graphics);
+    graphics.fill(rec);
+
+    graphics.setPaint(new Color(102, 102, 255));
+    for (int i = 0; i < connection.length; i++) {
+      if (connection[i]) {
+        int x = 0;
+        int height = 0;
+        int width = 0;
+        try {
+          width = contents[i].getWidth();
+          height = contents[i].getHeight();
+          x = contents[i].getX() - width / 2;
+        }
+        catch (Exception e) {
+          width = contents[i - 1].getWidth();
+          height = contents[i - 1].getHeight();
+          x = contents[i - 1].getX() - width / 2 + width;
+        }
+
+        Polygon triangule = new Polygon();
+        triangule.addPoint(x, height);
+        triangule.addPoint(x + width / 2, -8 + height);
+        triangule.addPoint(x + width, height);
+
+        Area a = new Area(triangule);
+        Area b = new Area(rec);
+        a.intersect(b);
+        graphics.fill(a);
+
+      }
+    }//fim laço
+    
+    graphics.setPaint(new Color(180, 180, 180));
+    graphics.draw(rec);
   }
 
   private Point initialLocation;
@@ -229,8 +267,8 @@ public class VisualNode extends JLabel {
         catch (InterruptedException ex) {
           Logger.getLogger(VisualNode.class.getName()).log(Level.SEVERE, null, ex);
         }
-        catch(ArrayIndexOutOfBoundsException er){
-          
+        catch (ArrayIndexOutOfBoundsException er) {
+
         }
       }
     }.start();
